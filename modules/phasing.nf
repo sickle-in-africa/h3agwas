@@ -16,15 +16,28 @@ def checkInputParams() {
     checkOutputDir()
     checkEmailAdressProvided()
     checkInputCohortData('snvFiltered')
-    checkReferencePanelsDir()
-    checkGeneticMapsDir()
+    //checkReferencePanelsDir()
+    //checkGeneticMapsDir()
 }
 
 def getInputChannels() {
     return [
         getCohortData('snvFiltered'),
         getReferencePanels(),
-        getGeneticMaps()]
+	getGeneticMapsArchive()]
+}
+
+process decompressGeneticMapsArchive {
+    input:
+        path geneticMapsArchive
+
+    output:
+        path "*.map"
+
+    script:
+        """
+        unzip ${geneticMapsArchive}
+        """
 }
 
 process selectBiallelicSnvsWithBcftools {
@@ -153,6 +166,7 @@ process phaseWithBeagle {
         """
         beagle \
             ref=${referencePanel} \
+            impute=false \
             map=${geneticMap} \
             gt=${alignedGenotypes} \
             chrom=${chromosome} \
@@ -177,6 +191,23 @@ process indexWithTabix {
         tabix -p vcf ${vcfFile}
         """
 }
+
+process indexReferencePanel {
+    label 'htslib'
+    label 'mediumMemory'
+
+    tag "chr${chromosome}"
+
+    input:
+	tuple val(chromosome), path(vcfFile)
+    output:
+	tuple val(chromosome), path("${vcfFile}"), path("${vcfFile}.tbi")
+    script:
+        """
+	tabix -p vcf ${vcfFile}
+        """
+}
+
 
 process concatenateWithBcftools {
     label 'bcftools'
@@ -227,14 +258,16 @@ def sendWorkflowExitEmail() {
    }
 }
 
-
 def getReferencePanels() {
-    return channel
-        .of(1..22)
-        .map{ it -> [
-            it,
-            file(params.phase.referencePanelsDir + '*chr' + it + '.*.vcf.gz')[0],
-            file(params.phase.referencePanelsDir + '*chr' + it + '.*.vcf.gz.tbi')[0]]}
+    referencePanels = channel
+        .fromPath(params.phase.referencePanels)
+        .flatten()
+
+    return indexByChromosome(selectAutosomes(referencePanels))
+}
+
+def getGeneticMapsArchive() {
+    return channel.fromPath(params.phase.geneticMapsArchive)
 }
 
 def getGeneticMaps() {
@@ -243,5 +276,24 @@ def getGeneticMaps() {
         .map{ it -> [
             it,
             file(params.phase.geneticMapsDir + '*chr' + it + '.*.map')[0]]}
+}
+
+def selectAutosomes(inputPaths) {
+    return inputPaths
+        .filter {
+            !(it.getName() =~ /chrX/) && !(it.getName() =~ /chrY/)
+        }
+}
+
+def indexByChromosome(inputPaths) {
+    return inputPaths
+        .map {
+            it ->
+            [getChromosomeNumberFromString(it.getName()), it]
+        }
+}
+
+def getChromosomeNumberFromString(inputString) {
+    return (inputString =~ /chr(\d+)/)[0][1].toInteger()
 }
 
