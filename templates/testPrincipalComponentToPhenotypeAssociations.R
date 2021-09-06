@@ -1,3 +1,5 @@
+#!/usr/bin/env Rscript --vanilla
+
 numberPrincipalComponents <- 100
 
 PCAEVEC <- read.table("${cohortEvec}", header=TRUE)

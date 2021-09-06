@@ -61,7 +61,32 @@ process testPrincipalComponentToPhenotypeAssociations {
     input:
         tuple path(cohortBed), path(cohortBim), path(cohortFam)        
         tuple path(cohortEvec), path(cohortEval)
+    output:
+        path "${output}"
     script:
-        output = "${cohortBed.getBaseName()}.PC_Output_Associations_FULL.txt"
-        template 'testPrincipalComponentToPhenotypeAssociations.R'
+        principalComponent = 5
+        output = "pc${principalComponent}.csv"
+        """
+        #!/usr/bin/env Rscript --vanilla
+
+        PHENOTYPE_COLUMN <- 6
+        SELECTED_PRINCIPAL_COMPONENT <- ${principalComponent}
+
+        phenotype <- as.data.frame(read.table("${cohortFam}", header=FALSE)[,c(1,PHENOTYPE_COLUMN)])
+        colnames(phenotype) <- c('sample_id', 'phenotype')
+
+        significantPrincipalComponents <- as.data.frame(read.table("${cohortEvec}", header=FALSE)[,c(1,2:(SELECTED_PRINCIPAL_COMPONENT+1))])
+        colnames(significantPrincipalComponents) <- c('sample_id', paste('pc', 1:SELECTED_PRINCIPAL_COMPONENT, sep=""))
+
+        associationData <- merge(phenotype, significantPrincipalComponents, by='sample_id')
+        associationData\$sample_id <- NULL
+
+        associationSummary <- summary(lm(phenotype ~ ., data=associationData))
+        pvalue <- associationSummary\$coefficients[SELECTED_PRINCIPAL_COMPONENT+1,4]
+        rsquared <- associationSummary\$r.squared
+
+        cat(c(SELECTED_PRINCIPAL_COMPONENT, pvalue, rsquared), file="${output}", sep=",")
+        """
 }
+
+
