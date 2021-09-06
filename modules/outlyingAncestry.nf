@@ -34,6 +34,8 @@ process selectPrincipalComponents {
 
     input:
         tuple path(cohortGeno), path(cohortSnp), path(cohortInd)
+    output:
+        tuple path("${cohortGeno.getBaseName()}.evec"), path("${cohortGeno.getBaseName()}.eval")
     script:
         """
         smartpca -p <(printf "genotypename: ${cohortGeno}
@@ -46,5 +48,20 @@ process selectPrincipalComponents {
             numoutevec: 100
             outliersigmathresh: 6
             altnormstyle: NO")
+        sed \
+            --in-place \
+            --expression 's/^[ \t]*//' \
+            ${cohortGeno.getBaseName()}.evec
         """
+}
+
+process testPrincipalComponentToPhenotypeAssociations {
+    label 'tidyverse'
+
+    input:
+        tuple path(cohortBed), path(cohortBim), path(cohortFam)        
+        tuple path(cohortEvec), path(cohortEval)
+    script:
+        output = "${cohortBed.getBaseName()}.PC_Output_Associations_FULL.txt"
+        template 'testPrincipalComponentToPhenotypeAssociations.R'
 }

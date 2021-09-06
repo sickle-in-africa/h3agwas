@@ -11,6 +11,7 @@ include {
     getInputChannels;
     convertCohortDataToEigensoftFormat;
     selectPrincipalComponents;
+    testPrincipalComponentToPhenotypeAssociations;
 } from "${projectDir}/modules/outlyingAncestry.nf"
 
 workflow {
@@ -23,5 +24,10 @@ workflow {
         = convertCohortDataToEigensoftFormat(
             cohortData)
 
-    selectPrincipalComponents(eigensoftCohortData)
+    principalComponents = selectPrincipalComponents(eigensoftCohortData)
+
+    testPrincipalComponentToPhenotypeAssociations(
+        cohortData,
+        principalComponents)
+
 }
