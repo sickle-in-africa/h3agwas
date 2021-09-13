@@ -6,7 +6,13 @@ def checkInputParams() {
     println 'checking...'
 }
 def getInputChannels() {
-    return getCohortData('phased')
+    return [
+        getCohortData('phased'),
+        getPrincipalComponentIds()]
+}
+
+def getPrincipalComponentIds() {
+    return channel.of(1..params.ancestry.numberOfPrincipalComponentsToAnalyze)
 }
 
 process convertCohortDataToEigensoftFormat {
@@ -58,13 +64,13 @@ process selectPrincipalComponents {
 process testPrincipalComponentToPhenotypeAssociations {
     label 'tidyverse'
 
+    tag "pc ${principalComponent}"
+
     input:
-        tuple path(cohortBed), path(cohortBim), path(cohortFam)        
-        tuple path(cohortEvec), path(cohortEval)
+        tuple val(principalComponent), path(cohortEvec), path(cohortEval), path(cohortBed), path(cohortBim), path(cohortFam)
     output:
         path "${output}"
     script:
-        principalComponent = 5
         output = "pc${principalComponent}.csv"
         """
         #!/usr/bin/env Rscript --vanilla
@@ -85,8 +91,72 @@ process testPrincipalComponentToPhenotypeAssociations {
         pvalue <- associationSummary\$coefficients[SELECTED_PRINCIPAL_COMPONENT+1,4]
         rsquared <- associationSummary\$r.squared
 
-        cat(c(SELECTED_PRINCIPAL_COMPONENT, pvalue, rsquared), file="${output}", sep=",")
+        write(paste(SELECTED_PRINCIPAL_COMPONENT, pvalue, rsquared, sep=","), file="${output}")
         """
 }
 
+process concatenateAcrossPrincipalComponents { 
 
+    input:
+        path pvalueAndVarianceTuples
+    output:
+        path "pvalueAndVarianceTable.csv"
+    script:
+        """
+        echo "#PC,pvalue,r-squared" > pvalueAndVarianceTable.csv
+        cat ${pvalueAndVarianceTuples} >> pvalueAndVarianceTable.csv
+        sort \
+            --key=1 \
+            --numeric-sort \
+            --field-separator="," \
+            --output=pvalueAndVarianceTable.csv \
+            pvalueAndVarianceTable.csv
+        """
+}
+
+process calculateVarianceAddedByNewPrincipalComponent {
+    input:
+        path pvalueAndVarianceTable
+    output:
+        path "pvalueAndVarianceAndVarianceAddedTable.csv"
+    script:
+        template 'calculateVarianceAddedByNewPrincipalComponent.py'
+}
+
+process getNumberOfSignificantlyAssociatedPrincipalComponents {
+
+    input:
+        path pvalueTable
+    output:
+        val numberOfPrincipalComponents
+    script:
+        numberOfPrincipalComponents = 0
+        """
+#!/usr/bin/env python
+with open("${pvalueTable}") as file:
+    for line in file:
+        if line.startswith('#'):
+            continue
+        linearray = line.rstrip().split(",")
+        if linearray[1] <= ${params.ancestry.maxPrincipalComponentAssociationPvalue}:
+            # ${numberOfPrincipalComponents} = linearray[1]
+        else:
+            break
+        """
+}
+
+process drawScreePlotForPrincipalComponents {
+    label 'tidyverse'
+
+    input:
+        path pvalueAndVarianceAndVarianceAddedTable  
+    output:
+        stdout
+    script:
+        """
+        #!/usr/bin/env Rscript --vanilla
+        library(tidyverse)
+        principalComponentAssociations <- read.csv("${pvalueAndVarianceAndVarianceAddedTable}", header=TRUE)
+        head(principalComponentAssociations)
+        """
+}

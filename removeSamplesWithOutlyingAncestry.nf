@@ -12,22 +12,46 @@ include {
     convertCohortDataToEigensoftFormat;
     selectPrincipalComponents;
     testPrincipalComponentToPhenotypeAssociations;
+    concatenateAcrossPrincipalComponents;
+    calculateVarianceAddedByNewPrincipalComponent;
+    drawScreePlotForPrincipalComponents;
+    getNumberOfSignificantlyAssociatedPrincipalComponents;
 } from "${projectDir}/modules/outlyingAncestry.nf"
 
 workflow {
 
     checkInputParams()
 
-    cohortData = getInputChannels()
+    (cohortData,
+     principalComponentIds) \
+        = getInputChannels()
 
-    eigensoftCohortData\
+    eigensoftCohortData \
         = convertCohortDataToEigensoftFormat(
             cohortData)
 
-    principalComponents = selectPrincipalComponents(eigensoftCohortData)
+    principalComponents \
+        = selectPrincipalComponents(eigensoftCohortData)
 
-    testPrincipalComponentToPhenotypeAssociations(
-        cohortData,
-        principalComponents)
+    pvalueAndVarianceTuples \
+        = testPrincipalComponentToPhenotypeAssociations(
+            principalComponentIds
+                .combine(principalComponents
+                    .combine(cohortData)))
+
+    pvalueAndVarianceTable \
+        = concatenateAcrossPrincipalComponents(
+            pvalueAndVarianceTuples.collect())
+
+    pvalueAndVarianceAndVarianceAddedTable \
+        = calculateVarianceAddedByNewPrincipalComponent(
+            pvalueAndVarianceTable)
+
+    drawScreePlotForPrincipalComponents(
+        pvalueAndVarianceAndVarianceAddedTable) | view()
+
+    getNumberOfSignificantlyAssociatedPrincipalComponents(
+        pvalueAndVarianceAndVarianceAddedTable)
+
 
 }
