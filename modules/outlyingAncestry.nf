@@ -50,8 +50,8 @@ process selectPrincipalComponents {
             evecoutname: ${cohortGeno.getBaseName()}.evec
             evaloutname: ${cohortGeno.getBaseName()}.eval
             numoutlieriter: 0
-            numoutlierevec: 100
-            numoutevec: 100
+            numoutlierevec: ${params.ancestry.numberOfPrincipalComponentsToAnalyze}
+            numoutevec: ${params.ancestry.numberOfPrincipalComponentsToAnalyze}
             outliersigmathresh: 6
             altnormstyle: NO")  > ${cohortGeno.getBaseName()}.log
         sed \
@@ -170,7 +170,7 @@ process removeOutlyingSamples {
             evaloutname: ${cohortGeno.getBaseName()}.outliers.eval
             numoutlieriter: 0
             numoutlierevec: ${numberOfSignificantPrincipalComponents}
-            numoutevec: 100
+            numoutevec: ${params.ancestry.numberOfPrincipalComponentsToAnalyze}
             outliersigmathresh: 6
             altnormstyle: NO") > ${cohortGeno.getBaseName()}.outliers.log
         sed \
