@@ -7,6 +7,11 @@
 nextflow.enable.dsl = 2
 
 include {
+    printWorkflowExitMessage;
+    collectPlotsTogetherAndZip;
+} from "${projectDir}/modules/base.nf"
+
+include {
     checkInputParams;
     getInputChannels;
     convertCohortDataToEigensoftFormat;
@@ -16,6 +21,11 @@ include {
     calculateVarianceAddedByNewPrincipalComponent;
     drawScreePlotForPrincipalComponents;
     getNumberOfSignificantlyAssociatedPrincipalComponents;
+    removeOutlyingSamples;
+    drawPrincipalComponentPlotForSamples;
+    drawPrincipalComponentPlotForOutliers;
+    extractOutliers;
+    rebuildCohortData;
 } from "${projectDir}/modules/outlyingAncestry.nf"
 
 workflow {
@@ -47,11 +57,41 @@ workflow {
         = calculateVarianceAddedByNewPrincipalComponent(
             pvalueAndVarianceTable)
 
-    drawScreePlotForPrincipalComponents(
-        pvalueAndVarianceAndVarianceAddedTable) | view()
+    screePlot \
+        = drawScreePlotForPrincipalComponents(
+            pvalueAndVarianceAndVarianceAddedTable)
 
-    getNumberOfSignificantlyAssociatedPrincipalComponents(
-        pvalueAndVarianceAndVarianceAddedTable)
+    numberOfSignificantPrincipalComponents \
+        = getNumberOfSignificantlyAssociatedPrincipalComponents(
+            pvalueAndVarianceAndVarianceAddedTable)
 
+    principalComponentsWithoutOutliers \
+        = removeOutlyingSamples(
+            eigensoftCohortData,
+            numberOfSignificantPrincipalComponents)
 
+    outlyingSamples \
+        = extractOutliers(principalComponentsWithoutOutliers)
+
+    principalComponentPlotForSamples \
+        = drawPrincipalComponentPlotForSamples(principalComponents)
+    principalComponentPlotForOutliers \
+        = drawPrincipalComponentPlotForOutliers(principalComponentsWithoutOutliers)
+
+    rebuildCohortData(cohortData.combine(outlyingSamples))
+
+    plots = channel
+        .empty().mix(
+            principalComponentPlotForSamples,
+            principalComponentPlotForOutliers)
+        .collect()
+
+    collectPlotsTogetherAndZip(
+        "ancestry",
+        plots)
+}
+
+workflow.onComplete {
+    printWorkflowExitMessage()
+    sendWorkflowExitEmail()
 }

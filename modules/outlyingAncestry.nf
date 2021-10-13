@@ -41,7 +41,7 @@ process selectPrincipalComponents {
     input:
         tuple path(cohortGeno), path(cohortSnp), path(cohortInd)
     output:
-        tuple path("${cohortGeno.getBaseName()}.evec"), path("${cohortGeno.getBaseName()}.eval")
+        tuple path("${cohortGeno.getBaseName()}.evec"), path("${cohortGeno.getBaseName()}.eval"), path("${cohortGeno.getBaseName()}.log")
     script:
         """
         smartpca -p <(printf "genotypename: ${cohortGeno}
@@ -53,7 +53,7 @@ process selectPrincipalComponents {
             numoutlierevec: 100
             numoutevec: 100
             outliersigmathresh: 6
-            altnormstyle: NO")
+            altnormstyle: NO")  > ${cohortGeno.getBaseName()}.log
         sed \
             --in-place \
             --expression 's/^[ \t]*//' \
@@ -67,7 +67,7 @@ process testPrincipalComponentToPhenotypeAssociations {
     tag "pc ${principalComponent}"
 
     input:
-        tuple val(principalComponent), path(cohortEvec), path(cohortEval), path(cohortBed), path(cohortBim), path(cohortFam)
+        tuple val(principalComponent), path(cohortEvec), path(cohortEval), path(cohortLog), path(cohortBed), path(cohortBim), path(cohortFam)
     output:
         path "${output}"
     script:
@@ -128,21 +128,9 @@ process getNumberOfSignificantlyAssociatedPrincipalComponents {
     input:
         path pvalueTable
     output:
-        val numberOfPrincipalComponents
+        env numberOfPrincipalComponents
     script:
-        numberOfPrincipalComponents = 0
-        """
-#!/usr/bin/env python
-with open("${pvalueTable}") as file:
-    for line in file:
-        if line.startswith('#'):
-            continue
-        linearray = line.rstrip().split(",")
-        if linearray[1] <= ${params.ancestry.maxPrincipalComponentAssociationPvalue}:
-            # ${numberOfPrincipalComponents} = linearray[1]
-        else:
-            break
-        """
+        template 'getNumberOfSignificantlyAssociatedPrincipalComponents.sh'
 }
 
 process drawScreePlotForPrincipalComponents {
@@ -151,12 +139,130 @@ process drawScreePlotForPrincipalComponents {
     input:
         path pvalueAndVarianceAndVarianceAddedTable  
     output:
-        stdout
+        path "scree-plot-for-principal-components.png"
     script:
         """
         #!/usr/bin/env Rscript --vanilla
         library(tidyverse)
-        principalComponentAssociations <- read.csv("${pvalueAndVarianceAndVarianceAddedTable}", header=TRUE)
-        head(principalComponentAssociations)
+        read.csv("${pvalueAndVarianceAndVarianceAddedTable}", header=TRUE) %>% 
+            ggplot(aes(x=X.PC,y=r.squared_added)) +
+                geom_bar(stat="identity") +
+                xlab("principal component") +
+                ylab("variance explained")
+        ggsave("scree-plot-for-principal-components.png", dpi=300)
+        """
+}
+
+process removeOutlyingSamples {
+    label 'eigensoft'
+
+    input:
+        tuple path(cohortGeno), path(cohortSnp), path(cohortInd)
+        val numberOfSignificantPrincipalComponents
+    output:
+        tuple path("${cohortGeno.getBaseName()}.outliers.evec"), path("${cohortGeno.getBaseName()}.outliers.eval"), path("${cohortGeno.getBaseName()}.outliers.log")
+    script:
+    """
+        smartpca -p <(printf "genotypename: ${cohortGeno}
+            snpname: ${cohortSnp}
+            indivname: ${cohortInd}
+            evecoutname: ${cohortGeno.getBaseName()}.outliers.evec
+            evaloutname: ${cohortGeno.getBaseName()}.outliers.eval
+            numoutlieriter: 0
+            numoutlierevec: ${numberOfSignificantPrincipalComponents}
+            numoutevec: 100
+            outliersigmathresh: 6
+            altnormstyle: NO") > ${cohortGeno.getBaseName()}.outliers.log
+        sed \
+            --in-place \
+            --expression 's/^[ \t]*//' \
+            --expression 's/:/ /g' \
+            ${cohortGeno.getBaseName()}.outliers.evec
+    """
+}
+
+process drawPrincipalComponentPlotForSamples {
+    label 'tidyverse'
+
+    input:
+        tuple path(cohortEvec), path(cohortEval), path(cohortLog)
+    output:
+        path "principal-component-plot-for-samples.pdf"
+    script:
+        """
+        #!/usr/bin/env Rscript --vanilla
+        library(tidyverse)
+
+        pcx <- 1
+        pcy <- 2
+
+        PCAEVEC <-read.table("${cohortEvec}",head=T)
+        colnames(PCAEVEC)[pcx+2] <- paste("PC",pcx,sep="")
+        colnames(PCAEVEC)[pcy+2] <- paste("PC",pcy,sep="")
+        colnames(PCAEVEC)[ncol(PCAEVEC)] <- "Pheno"
+        pdf("principal-component-plot-for-samples.pdf")
+        qplot(PCAEVEC[,pcx+2],PCAEVEC[,pcy+2], data=PCAEVEC, color=Pheno) + 
+            xlab(paste("PC",(pcx),sep="")) + 
+            ylab(paste("PC",(pcy),sep=""))
+        dev.off()
+        """
+}
+
+process drawPrincipalComponentPlotForOutliers {
+    label 'tidyverse'
+
+    input:
+        tuple path(cohortEvec), path(cohortEval), path(cohortLog)
+    output:
+        path "principal-component-plot-for-outliers.pdf"
+    script:
+        """
+        #!/usr/bin/env Rscript --vanilla
+        library(tidyverse)
+
+        pcx <- 1
+        pcy <- 2
+
+        PCAEVEC <-read.table("${cohortEvec}",head=T)
+        colnames(PCAEVEC)[pcx+2] <- paste("PC",pcx,sep="")
+        colnames(PCAEVEC)[pcy+2] <- paste("PC",pcy,sep="")
+        colnames(PCAEVEC)[ncol(PCAEVEC)] <- "Pheno"
+        pdf("principal-component-plot-for-outliers.pdf")
+        qplot(PCAEVEC[,pcx+2],PCAEVEC[,pcy+2], data=PCAEVEC, color=Pheno) + 
+            xlab(paste("PC",(pcx),sep="")) + 
+            ylab(paste("PC",(pcy),sep=""))
+        dev.off()
+        """
+}
+
+process extractOutliers {
+
+    input:
+        tuple path(cohortEvec), path(cohortEval), path(cohortLog)
+    output:
+        path "${cohortEvec.getBaseName()}.outliers"
+    script:
+        """
+        awk '/REMOVED/ {print \$3}' ${cohortLog} | sed 's/:/ /g' > ${cohortEvec.getBaseName()}.outliers
+        """
+}
+
+process rebuildCohortData {
+    label 'plink'
+
+    input:
+        tuple path(cohortBed), path(cohortBim), path(cohortFam), path(outlyingSamples)
+    output:
+        publishDir "${params.outputDir}/ancestry/cohortData", mode: 'copy'
+        path "${params.cohortName}.ancestry.{bed,bim,fam}"
+    script:
+        """
+        plink \
+            --keep-allele-order \
+            --bfile ${cohortBed.getBaseName()} \
+            --remove ${outlyingSamples} \
+            --make-bed \
+            --threads $task.cpus \
+            --out ${params.cohortName}.ancestry
         """
 }
