@@ -53,6 +53,7 @@ process selectPrincipalComponents {
             numoutlierevec: ${params.ancestry.numberOfPrincipalComponentsToAnalyze}
             numoutevec: ${params.ancestry.numberOfPrincipalComponentsToAnalyze}
             outliersigmathresh: 6
+            numthreads: ${task.cpus}
             altnormstyle: NO")  > ${cohortGeno.getBaseName()}.log
         sed \
             --in-place \
@@ -172,6 +173,7 @@ process removeOutlyingSamples {
             numoutlierevec: ${numberOfSignificantPrincipalComponents}
             numoutevec: ${params.ancestry.numberOfPrincipalComponentsToAnalyze}
             outliersigmathresh: 6
+            numthreads: ${task.cpus}
             altnormstyle: NO") > ${cohortGeno.getBaseName()}.outliers.log
         sed \
             --in-place \

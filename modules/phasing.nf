@@ -166,7 +166,7 @@ process phaseWithBeagle {
         """
         beagle \
             ref=${referencePanel} \
-            impute=${params.impute.withBeagle} \
+            impute=true \
             map=${geneticMap} \
             gt=${alignedGenotypes} \
             chrom=${chromosome} \
