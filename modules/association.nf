@@ -35,8 +35,8 @@ process getAssociationReport {
     script:
         """
         plink \
-            --keep-allele-order \
-            --bfile ${cohortBed.getBaseName()} \
+        --keep-allele-order \
+        --bfile ${cohortBed.getBaseName()} \
 	    --assoc \
 	    --maf 0.01 \
 	    --out ${params.cohortName}
