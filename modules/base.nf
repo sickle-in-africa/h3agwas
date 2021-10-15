@@ -9,12 +9,12 @@ def checkSelectedSnv() {
     }
 }
 def checkAssociationInput() {
+    posibleInputs = ["input", "basicFiltered", "sampleFiltered", "snvFiltered", "phased", "ancestry"]
     if (stringIsNull(params.associationInput)) {
-        exit 1, 'params.associationInput not set -> please chose an input step to use in association test, e.g. input'
+        exit 1, "params.associationInput not set -> please set it to one of the following items: ${posibleInputs}"
     }
-    posibleInputs = ["input", "basicFiltered", "sampleFiltered", "snvFiltered", "phased"]
     if (!posibleInputs.contains(params.associationInput)) {
-        exit 1, 'params.associationInput not recognised -> please set it to one of the following items: ["input", "basicFiltered", "sampleFiltered", "snvFiltered", "phased"]'
+        exit 1, "params.associationInput value not recognised -> please set it to one of the following items: ${posibleInputs}"
     }
 }
 def checkIlluminaGenotypeReports() {
