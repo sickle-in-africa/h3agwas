@@ -37,6 +37,7 @@ process convertCohortDataToEigensoftFormat {
 
 process selectPrincipalComponents {
     label 'eigensoft'
+    label 'bigMemory'
 
     input:
         tuple path(cohortGeno), path(cohortSnp), path(cohortInd)
@@ -156,6 +157,7 @@ process drawScreePlotForPrincipalComponents {
 
 process removeOutlyingSamples {
     label 'eigensoft'
+    label 'bigMemory'
 
     input:
         tuple path(cohortGeno), path(cohortSnp), path(cohortInd)
@@ -251,6 +253,7 @@ process extractOutliers {
 
 process rebuildCohortData {
     label 'plink'
+    label 'mediumMemory'
 
     input:
         tuple path(cohortBed), path(cohortBim), path(cohortFam), path(outlyingSamples)
