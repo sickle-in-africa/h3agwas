@@ -47,7 +47,6 @@ include {
     fitHetonlyAssociationModel;
 	drawManhattanPlot;
 	drawQqPlot;
-	sendWorkflowExitEmail;
 } from "${projectDir}/modules/association.nf"
 
 workflow {
@@ -74,9 +73,6 @@ workflow {
     fitRecessiveAssociationModel(
         cohortData.combine(covariatesReport))
 
-    fitHetonlyAssociationModel(
-        cohortData.combine(covariatesReport))
-
 	manhattanPlot \
         = drawManhattanPlot(
             associationReport)
@@ -85,7 +81,8 @@ workflow {
         = drawQqPlot(
             associationReport)
 
-    plots = channel
+    plots \
+        = channel
         .empty().mix(
             manhattanPlot,
             qqPlot)
@@ -94,10 +91,10 @@ workflow {
     collectPlotsTogetherAndZip(
         "association-" + params.associationInput,
         plots)
-
 }
 
 workflow.onComplete {
     printWorkflowExitMessage()
-    sendWorkflowExitEmailWithPlots("association-" + params.associationInput)
+    sendWorkflowExitEmailWithPlots(
+        "association-" + params.associationInput)
 }

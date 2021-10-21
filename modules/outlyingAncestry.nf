@@ -137,6 +137,35 @@ process getNumberOfSignificantlyAssociatedPrincipalComponents {
         template 'getNumberOfSignificantlyAssociatedPrincipalComponents.sh'
 }
 
+process addSignificantPrincipleComponentsToCovariates {
+    label 'tidyverse'
+
+    input:
+        val numberOfSignificantPrincipalComponents
+        tuple path(cohortEvec), path(cohortEval), path(cohortLog)
+        path covariatesReport
+    output:
+        path "${covariatesReport.getBaseName()}.extended.cov"
+    script:
+        """
+        #!/usr/bin/env Rscript --vanilla
+        library(tidyverse)
+
+        read.table('cameroon-scd.snvFiltered.evec', skip=1) %>% as_tibble -> evec
+
+        evec[,1:(${numberOfSignificantPrincipalComponents}+1)] -> evec_filtered
+
+        c('IID',paste('PC', 1:${numberOfSignificantPrincipalComponents}, sep='')) -> colnames(evec_filtered)
+
+        read.table("${covariatesReport}", header=TRUE, comment.char = '&', check.names=FALSE) -> cov
+
+        merge(cov, evec_filtered, by='IID') %>% relocate('#FID') -> updated_covariates
+
+        updated_covariates %>% write.table("${covariatesReport.getBaseName()}.extended.cov",quote=FALSE,row.names=FALSE)
+        """
+
+}
+
 process drawScreePlotForPrincipalComponents {
     label 'tidyverse'
 

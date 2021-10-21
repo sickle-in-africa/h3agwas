@@ -38,6 +38,7 @@ nextflow.enable.dsl=2
 include {
     printWorkflowExitMessage;
     sendWorkflowExitEmail;
+    rebuildCovariatesReport;
 } from "${projectDir}/modules/base.nf"
 
 include {
@@ -55,7 +56,6 @@ include {
     indexReferencePanel;
     concatenateWithBcftools;
     rebuildCohortDataWithPlink;
-    rebuildCohortData;
 } from "${projectDir}/modules/phasing.nf"
 
 
@@ -66,37 +66,56 @@ workflow {
     (inputCohortData,
      referencePanels,
      geneticMapsArchive,
-     covariatesReport) = getInputChannels()
+     covariatesReport) \
+        = getInputChannels()
 
-    referencePanelsWithIndexes = indexReferencePanel(referencePanels)
+    referencePanelsWithIndexes \
+        = indexReferencePanel(
+            referencePanels)
 
-    geneticMaps = decompressGeneticMapsArchive(geneticMapsArchive)
-        .flatten()
+    geneticMaps \
+        = decompressGeneticMapsArchive(geneticMapsArchive)
+            .flatten()
 
-    autosomalGeneticMaps = indexByChromosome(selectAutosomes(geneticMaps))
+    autosomalGeneticMaps \
+        = indexByChromosome(selectAutosomes(geneticMaps))
 
-    filteredReferencePanels = selectBiallelicSnvsWithBcftools(
+    filteredReferencePanels \
+        = selectBiallelicSnvsWithBcftools(
         referencePanelsWithIndexes)
 
-    genotypeSet = selectAutosomalGenotypeSet(
+    genotypeSet \
+        = selectAutosomalGenotypeSet(
         inputCohortData)
 
-    alignedGenotypeSubsets = alignWithConformGt(
+    alignedGenotypeSubsets \
+        = alignWithConformGt(
         genotypeSet.combine(filteredReferencePanels))
 
-    haplotypeSubsets = phaseWithBeagle(
-        alignedGenotypeSubsets
-            .join(filteredReferencePanels)
-            .join(autosomalGeneticMaps))
+    haplotypeSubsets \
+        = phaseWithBeagle(
+            alignedGenotypeSubsets
+                .join(filteredReferencePanels)
+                .join(autosomalGeneticMaps))
 
-    indexedHaplotypeSubsets = indexWithTabix(
-        haplotypeSubsets)
+    indexedHaplotypeSubsets \
+        = indexWithTabix(
+            haplotypeSubsets)
 
-    haplotypeSet = concatenateWithBcftools(
-        indexedHaplotypeSubsets.collect())
+    haplotypeSet \
+        = concatenateWithBcftools(
+            indexedHaplotypeSubsets.collect())
 
-    phasedCohortData = rebuildCohortDataWithPlink(
-        haplotypeSet, inputCohortData)
+    phasedCohortData \
+        = rebuildCohortDataWithPlink(
+            haplotypeSet,
+            inputCohortData)
+
+    filteredCovariatesReport \
+        = rebuildCovariatesReport(
+            'phased',
+            covariatesReport,
+            phasedCohortData)
 }
 
 workflow.onComplete {

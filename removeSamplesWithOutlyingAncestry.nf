@@ -10,6 +10,7 @@ include {
     printWorkflowExitMessage;
     collectPlotsTogetherAndZip;
     sendWorkflowExitEmailWithPlots;
+    rebuildCovariatesReport;
 } from "${projectDir}/modules/base.nf"
 
 include {
@@ -22,6 +23,7 @@ include {
     calculateVarianceAddedByNewPrincipalComponent;
     drawScreePlotForPrincipalComponents;
     getNumberOfSignificantlyAssociatedPrincipalComponents;
+    addSignificantPrincipleComponentsToCovariates;
     removeOutlyingSamples;
     drawPrincipalComponentPlotForSamples;
     drawPrincipalComponentPlotForOutliers;
@@ -67,6 +69,12 @@ workflow {
         = getNumberOfSignificantlyAssociatedPrincipalComponents(
             pvalueAndVarianceAndVarianceAddedTable)
 
+    extendedCovariatesReport \
+        = addSignificantPrincipleComponentsToCovariates(
+            numberOfSignificantPrincipalComponents,
+            principalComponents,
+            covariatesReport)
+
     principalComponentsWithoutOutliers \
         = removeOutlyingSamples(
             eigensoftCohortData,
@@ -90,7 +98,7 @@ workflow {
     filteredCovariatesReport \
         = rebuildCovariatesReport(
             'ancestry',
-            covariatesReport,
+            extendedCovariatesReport,
             filteredCohortData)
 
     plots = channel
