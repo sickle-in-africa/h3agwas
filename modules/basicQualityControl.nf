@@ -4,6 +4,7 @@ include {
     checkEmailAdressProvided;
     userEmailAddressIsProvided;
     getCohortData;
+    getCovariatesReport;
     getBasicEmailSubject;
     getBasicEmailMessage;
     checkReferenceSequence;
@@ -21,7 +22,8 @@ def checkInputParams() {
 def getInputChannels() {
     return [
         getCohortData('input'),
-        getReferenceSequence()]
+        getReferenceSequence(),
+        getCovariatesReport('input')]
 }
 
 def getReferenceSequence() {
@@ -190,13 +192,4 @@ process removeReallyLowQualitySamplesAndSnvs {
             --make-bed \
             --out ${params.cohortName}.basicFiltered     
         """
-}
-
-def sendWorkflowExitEmail() {
-    if (userEmailAddressIsProvided()) {
-        sendMail(
-            to: "${params.email}",
-            subject: getBasicEmailSubject(),
-            body: getBasicEmailMessage())
-   }
 }

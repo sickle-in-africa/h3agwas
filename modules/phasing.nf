@@ -9,6 +9,7 @@ include {
     getBasicEmailSubject;
     getBasicEmailMessage;
     getCohortData;
+    getCovariatesReport;
 } from "${projectDir}/modules/base.nf"
 
 def checkInputParams() {
@@ -22,9 +23,10 @@ def checkInputParams() {
 
 def getInputChannels() {
     return [
-        getCohortData('snvFiltered'),
+        getCohortData('ancestry'),
         getReferencePanels(),
-	getGeneticMapsArchive()]
+	    getGeneticMapsArchive(),
+        getCovariatesReport('ancestry')]
 }
 
 process decompressGeneticMapsArchive {
@@ -247,15 +249,6 @@ process rebuildCohortDataWithPlink() {
             --double-id \
             --out ${params.cohortName}.phased
         """
-}
-
-def sendWorkflowExitEmail() {
-    if (userEmailAddressIsProvided()) {
-        sendMail(
-            to: "${params.email}",
-            subject: getBasicEmailSubject(),
-            body: getBasicEmailMessage())
-   }
 }
 
 def getReferencePanels() {

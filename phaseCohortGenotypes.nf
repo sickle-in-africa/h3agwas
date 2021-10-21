@@ -37,6 +37,7 @@ nextflow.enable.dsl=2
 
 include {
     printWorkflowExitMessage;
+    sendWorkflowExitEmail;
 } from "${projectDir}/modules/base.nf"
 
 include {
@@ -54,7 +55,7 @@ include {
     indexReferencePanel;
     concatenateWithBcftools;
     rebuildCohortDataWithPlink;
-    sendWorkflowExitEmail;
+    rebuildCohortData;
 } from "${projectDir}/modules/phasing.nf"
 
 
@@ -64,7 +65,8 @@ workflow {
 
     (inputCohortData,
      referencePanels,
-     geneticMapsArchive) = getInputChannels()
+     geneticMapsArchive,
+     covariatesReport) = getInputChannels()
 
     referencePanelsWithIndexes = indexReferencePanel(referencePanels)
 

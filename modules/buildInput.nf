@@ -5,6 +5,7 @@ include {
     checkIlluminaSampleReport;
     checkIlluminaLocusReport;
     checkClinicalPhenotypeFam;
+    checkCovariatesReport;
     userEmailAddressIsProvided;
     checkEmailAdressProvided;
     getBasicEmailSubject;
@@ -19,6 +20,7 @@ def checkInputParams() {
     checkIlluminaSampleReport()
     checkIlluminaLocusReport()
     checkClinicalPhenotypeFam()
+    checkCovariatesReport()
 }
 
 def getInputChannels() {
@@ -26,7 +28,8 @@ def getInputChannels() {
         getIlluminaGenotypeReports(),
         getIlluminaSampleReport(),
         getIlluminaLocusReport(),
-        getClinicalPhenotypeReport()]
+        getClinicalPhenotypeReport(),
+        getCovariatesReport()]
 }
 
 def getIlluminaGenotypeReports() {
@@ -47,6 +50,11 @@ def getIlluminaLocusReport() {
 def getClinicalPhenotypeReport() {
     return channel
         .fromPath(params.input.clinicalPhenotypeFam)
+}
+
+def getCovariatesReport() {
+    return channel 
+        .fromPath(params.input.covariatesReport)
 }
 
 def splitTextFiles(inputFiles) {
@@ -219,11 +227,23 @@ process rebuildCohortDataWithPhenotypes {
         """
 }
 
-def sendWorkflowExitEmail() {
-    if (userEmailAddressIsProvided()) {
-        sendMail(
-            to: "${params.email}",
-            subject: getBasicEmailSubject(),
-            body: getBasicEmailMessage())
-   }
+process rebuildCovariatesReport {
+    label 'plink2'
+    label 'mediumMemory'
+
+    input:
+        path covariatesReport
+        tuple path(cohortBed), path(cohortBim), path(cohortFam)
+    output:
+        publishDir "${params.outputDir}/input/cohortData", mode: 'copy'
+        path "${params.cohortName}.input.cov"
+    script:
+        """
+        plink2 \
+            --bfile ${cohortBed.getBaseName()} \
+            --covar ${covariatesReport} \
+            --threads $task.cpus \
+            --write-covar cols=fid \
+            --out ${params.cohortName}.input
+        """
 }

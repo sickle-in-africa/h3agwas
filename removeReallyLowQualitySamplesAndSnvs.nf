@@ -30,7 +30,9 @@
 nextflow.enable.dsl=2
 
 include {
+    rebuildCovariatesReport;
     printWorkflowExitMessage;
+    sendWorkflowExitEmail;
 } from "${projectDir}/modules/base.nf"
 
 include {
@@ -42,7 +44,6 @@ include {
     selectBiallelicSnvs;
     rebuildCohortData;
     removeReallyLowQualitySamplesAndSnvs;
-    sendWorkflowExitEmail;
 } from "${projectDir}/modules/basicQualityControl.nf"
 
 
@@ -51,7 +52,8 @@ workflow {
     checkInputParams()
 
     (cohortData,
-     referenceSequence) = getInputChannels()
+     referenceSequence,
+     covariatesReport) = getInputChannels()
 
     duplicatedVariantIds \
         = selectDuplicatedVariants(
@@ -79,6 +81,12 @@ workflow {
     basicFilteredCohortData \
         = removeReallyLowQualitySamplesAndSnvs(
             alignedCohortData)
+
+    filteredCovariatesReport \
+        = rebuildCovariatesReport(
+            'basicFiltered',
+            covariatesReport,
+            basicFilteredCohortData)
 }
 
 workflow.onComplete {

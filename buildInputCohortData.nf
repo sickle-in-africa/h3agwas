@@ -42,6 +42,7 @@ nextflow.enable.dsl = 2
 
 include {
     printWorkflowExitMessage;
+    rebuildCovariatesReport;
 } from "${projectDir}/modules/base.nf"
 
 include {
@@ -66,7 +67,8 @@ workflow {
     (genotypeReports,
      sampleReport,
      locusReport,
-     phenotypeFam) \
+     phenotypeFam, 
+     covariatesReport) \
         = getInputChannels()
 
     genotypeReportChunks \
@@ -108,6 +110,12 @@ workflow {
         = rebuildCohortDataWithPhenotypes(
             cohortData,
             cohortFam)
+
+    filteredCovariatesReport \
+        = rebuildCovariatesReport(
+            'input',
+            covariatesReport,
+            phenotypedCohortData)
 
 }
 

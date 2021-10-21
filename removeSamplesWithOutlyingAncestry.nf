@@ -9,6 +9,7 @@ nextflow.enable.dsl = 2
 include {
     printWorkflowExitMessage;
     collectPlotsTogetherAndZip;
+    sendWorkflowExitEmailWithPlots;
 } from "${projectDir}/modules/base.nf"
 
 include {
@@ -33,7 +34,8 @@ workflow {
     checkInputParams()
 
     (cohortData,
-     principalComponentIds) \
+     principalComponentIds,
+     covariatesReport) \
         = getInputChannels()
 
     eigensoftCohortData \
@@ -74,11 +76,22 @@ workflow {
         = extractOutliers(principalComponentsWithoutOutliers)
 
     principalComponentPlotForSamples \
-        = drawPrincipalComponentPlotForSamples(principalComponents)
-    principalComponentPlotForOutliers \
-        = drawPrincipalComponentPlotForOutliers(principalComponentsWithoutOutliers)
+        = drawPrincipalComponentPlotForSamples(
+            principalComponents)
 
-    rebuildCohortData(cohortData.combine(outlyingSamples))
+    principalComponentPlotForOutliers \
+        = drawPrincipalComponentPlotForOutliers(
+            principalComponentsWithoutOutliers)
+
+    filteredCohortData \
+        = rebuildCohortData(
+            cohortData.combine(outlyingSamples))
+
+    filteredCovariatesReport \
+        = rebuildCovariatesReport(
+            'ancestry',
+            covariatesReport,
+            filteredCohortData)
 
     plots = channel
         .empty().mix(
@@ -93,5 +106,5 @@ workflow {
 
 workflow.onComplete {
     printWorkflowExitMessage()
-    sendWorkflowExitEmail()
+    sendWorkflowExitEmailWithPlots("ancestry")
 }

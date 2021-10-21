@@ -1,5 +1,6 @@
 include {
     getCohortData;
+    getCovariatesReport;
 } from "${projectDir}/modules/base.nf"
 
 def checkInputParams() {
@@ -7,8 +8,9 @@ def checkInputParams() {
 }
 def getInputChannels() {
     return [
-        getCohortData('phased'),
-        getPrincipalComponentIds()]
+        getCohortData('snvFiltered'),
+        getPrincipalComponentIds(),
+        getCovariatesReport('snvFiltered')]
 }
 
 def getPrincipalComponentIds() {

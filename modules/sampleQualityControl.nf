@@ -5,6 +5,7 @@ include {
     userEmailAddressIsProvided;
     checkInputCohortData;
     getCohortData;
+    getCovariatesReport;
     getBasicEmailSubject;
     getBasicEmailMessage;
 } from "${projectDir}/modules/base.nf"
@@ -17,7 +18,9 @@ def checkInputParams() {
 }
 
 def getInputChannels() {
-    return getCohortData('basicFiltered')
+    return [
+        getCohortData('basicFiltered'),
+        getCovariatesReport('basicFiltered')]
 }
 
 process getPopulationStratificationReports {
@@ -286,12 +289,23 @@ process removeLowQualitySamples {
         """
 }
 
-def sendWorkflowExitEmail() {
-    if (userEmailAddressIsProvided()) {
-        sendMail(
-            to: "${params.email}",
-            subject: getBasicEmailSubject(),
-            body: getBasicEmailMessage(),
-            attach: "${params.outputDir}plotArchives/sampleFiltering.tar.gz")
-    }
+process rebuildCovariatesReport {
+    label 'plink2'
+    label 'mediumMemory'
+
+    input:
+        path covariatesReport
+        tuple path(cohortBed), path(cohortBim), path(cohortFam)
+    output:
+        publishDir "${params.outputDir}/sampleFiltered/cohortData", mode: 'copy'
+        path "${params.cohortName}.input.cov"
+    script:
+        """
+        plink2 \
+            --bfile ${cohortBed.getBaseName()} \
+            --covar ${covariatesReport} \
+            --threads $task.cpus \
+            --write-covar cols=fid \
+            --out ${params.cohortName}.sampleFiltered
+        """
 }

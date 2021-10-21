@@ -26,6 +26,8 @@ nextflow.enable.dsl=2
 include {
     printWorkflowExitMessage;
     collectPlotsTogetherAndZip;
+    sendWorkflowExitEmailWithPlots;
+    rebuildCovariatesReport;
 } from "${projectDir}/modules/base.nf"
 
 include {
@@ -52,7 +54,9 @@ workflow {
 
     checkInputParams()
 
-    cohortData = getInputChannels()
+    (cohortData,
+     covariatesReport) \
+        = getInputChannels()
 
     cohortMissing \
         = getMissingnessReport(
@@ -110,6 +114,12 @@ workflow {
             cohortData,
             lowQualitySnvs)
 
+    filteredCovariatesReport \
+        = rebuildCovariatesReport(
+            'snvFiltered',
+            covariatesReport,
+            snvFilteredCohortData)
+
     plots = channel
         .empty().mix(
             differentialMissingnessPlot,
@@ -125,5 +135,5 @@ workflow {
 
 workflow.onComplete {
     printWorkflowExitMessage()
-    sendWorkflowExitEmail()
+    sendWorkflowExitEmailWithPlots("snvFiltering")
 }
