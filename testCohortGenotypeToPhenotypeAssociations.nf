@@ -33,26 +33,45 @@ nextflow.enable.dsl=2
 include {
     printWorkflowExitMessage;
     collectPlotsTogetherAndZip;
+    sendWorkflowExitEmailWithPlots;
 } from "${projectDir}/modules/base.nf"
 
 include {
     checkInputParams;
 	getInputChannels;
 	getAssociationReport;
+    fitGenotypicAssociationModel;
+    fitHethomAssociationModel;
+    fitDominantAssociationModel;
+    fitRecessiveAssociationModel;
+    fitHetonlyAssociationModel;
 	drawManhattanPlot;
 	drawQqPlot;
-	sendWorkflowExitEmail;
 } from "${projectDir}/modules/association.nf"
 
 workflow {
 
     checkInputParams()
 
-	cohortData = getInputChannels()
+	(cohortData,
+     covariatesReport) \
+        = getInputChannels()
 
 	associationReport \
         = getAssociationReport(
             cohortData)
+
+    fitGenotypicAssociationModel(
+        cohortData.combine(covariatesReport))
+
+    fitHethomAssociationModel(
+        cohortData.combine(covariatesReport))
+
+    fitDominantAssociationModel(
+        cohortData.combine(covariatesReport))
+
+    fitRecessiveAssociationModel(
+        cohortData.combine(covariatesReport))
 
 	manhattanPlot \
         = drawManhattanPlot(
@@ -62,7 +81,8 @@ workflow {
         = drawQqPlot(
             associationReport)
 
-    plots = channel
+    plots \
+        = channel
         .empty().mix(
             manhattanPlot,
             qqPlot)
@@ -71,10 +91,10 @@ workflow {
     collectPlotsTogetherAndZip(
         "association-" + params.associationInput,
         plots)
-
 }
 
 workflow.onComplete {
     printWorkflowExitMessage()
-    sendWorkflowExitEmail()
+    sendWorkflowExitEmailWithPlots(
+        "association-" + params.associationInput)
 }

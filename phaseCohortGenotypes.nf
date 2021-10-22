@@ -3,15 +3,16 @@
  *  ==========================
  *
  *  This script estimates the underlying haplotypes of the genotypes
- *  provided by the user, and imputes them, using reference panels and 
+ *  *in autosomes* provided by the user, using reference panels and 
  *  genetic maps. The input is a plink binary trio (bed, bim, fam) 
  *  data set, below colectively referred to as `cohortData`. 
  *
  *  First the cohort data is read into a channel, along with the
  *  reference panels and genetic maps. We assume there is one panel
- *  and one map per chromosome. Then the reference panels are filtered
+ *  and one map per chromosome. Only the panels and maps associated
+ *  with autosomes are selected. Then the reference panels are filtered
  *  such that only biallelic snvs are used. The genotype set of the
- *  cohort are extracted and saved temporarily in the VCF format.    
+ *  cohort is extracted and saved temporarily in the VCF format.    
  *
  *  The genotype set of the cohort is then aligned to the reference 
  *  panels. Any snvs in this genotype set not found in the reference
@@ -36,20 +37,25 @@ nextflow.enable.dsl=2
 
 include {
     printWorkflowExitMessage;
+    sendWorkflowExitEmail;
+    rebuildCovariatesReport;
 } from "${projectDir}/modules/base.nf"
 
 include {
     checkInputParams;
     getInputChannels;
+    decompressGeneticMapsArchive;
+    selectAutosomes;
+    indexByChromosome;
     selectBiallelicSnvsWithBcftools;
     selectAutosomalGenotypeSet;
     recodeMaleXHaploidAsDiploid;
     alignWithConformGt;
     phaseWithBeagle;
     indexWithTabix;
+    indexReferencePanel;
     concatenateWithBcftools;
     rebuildCohortDataWithPlink;
-    sendWorkflowExitEmail;
 } from "${projectDir}/modules/phasing.nf"
 
 
@@ -59,34 +65,60 @@ workflow {
 
     (inputCohortData,
      referencePanels,
-     geneticMaps) = getInputChannels()
+     geneticMapsArchive,
+     covariatesReport) \
+        = getInputChannels()
 
-    filteredReferencePanels = selectBiallelicSnvsWithBcftools(
-        referencePanels)
+    referencePanelsWithIndexes \
+        = indexReferencePanel(
+            referencePanels)
 
-    genotypeSet = selectAutosomalGenotypeSet(
+    geneticMaps \
+        = decompressGeneticMapsArchive(geneticMapsArchive)
+            .flatten()
+
+    autosomalGeneticMaps \
+        = indexByChromosome(selectAutosomes(geneticMaps))
+
+    filteredReferencePanels \
+        = selectBiallelicSnvsWithBcftools(
+        referencePanelsWithIndexes)
+
+    genotypeSet \
+        = selectAutosomalGenotypeSet(
         inputCohortData)
 
-    alignedGenotypeSubsets = alignWithConformGt(
+    alignedGenotypeSubsets \
+        = alignWithConformGt(
         genotypeSet.combine(filteredReferencePanels))
 
-    haplotypeSubsets = phaseWithBeagle(
-        alignedGenotypeSubsets
-            .join(filteredReferencePanels)
-            .join(geneticMaps))
+    haplotypeSubsets \
+        = phaseWithBeagle(
+            alignedGenotypeSubsets
+                .join(filteredReferencePanels)
+                .join(autosomalGeneticMaps))
 
-    indexedHaplotypeSubsets = indexWithTabix(
-        haplotypeSubsets)
+    indexedHaplotypeSubsets \
+        = indexWithTabix(
+            haplotypeSubsets)
 
-    haplotypeSet = concatenateWithBcftools(
-        indexedHaplotypeSubsets.collect())
+    haplotypeSet \
+        = concatenateWithBcftools(
+            indexedHaplotypeSubsets.collect())
 
-    phasedCohortData = rebuildCohortDataWithPlink(
-        haplotypeSet, inputCohortData)
+    phasedCohortData \
+        = rebuildCohortDataWithPlink(
+            haplotypeSet,
+            inputCohortData)
+
+    filteredCovariatesReport \
+        = rebuildCovariatesReport(
+            'phased',
+            covariatesReport,
+            phasedCohortData)
 }
 
 workflow.onComplete {
     printWorkflowExitMessage()
     sendWorkflowExitEmail()
 }
-

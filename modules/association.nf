@@ -6,8 +6,10 @@ include {
     getBasicEmailSubject;
     getBasicEmailMessage;
     getCohortData;
+    getCovariatesReport;
     checkInputCohortData;
     checkAssociationInput;
+    checkCovariatesReport;
 } from "${projectDir}/modules/base.nf"
 
 def checkInputParams() {
@@ -16,10 +18,13 @@ def checkInputParams() {
     checkEmailAdressProvided()
     checkAssociationInput()
     checkInputCohortData(params.associationInput)
+    checkCovariatesReport()
 }
 
 def getInputChannels() {
-    return getCohortData(params.associationInput)
+    return [
+        getCohortData(params.associationInput),
+        getCovariatesReport(params.associationInput)]
 }
 
 process getAssociationReport {
@@ -35,12 +40,102 @@ process getAssociationReport {
     script:
         """
         plink \
-            --keep-allele-order \
-            --bfile ${cohortBed.getBaseName()} \
+        --keep-allele-order \
+        --bfile ${cohortBed.getBaseName()} \
 	    --assoc \
 	    --maf 0.01 \
 	    --out ${params.cohortName}
 	"""
+}
+
+process fitGenotypicAssociationModel {
+    label 'plink2'
+
+    input:
+        tuple path(cohortBed), path(cohortBim), path(cohortFam), path(cohortCov)
+    output:
+        publishDir "${params.outputDir}/${params.associationInput}/reports", mode: 'copy'
+        path "${cohortBed.getBaseName()}.genotypic.PHENO1.glm.logistic"
+    script:
+        """
+        plink2 \
+            --bfile ${cohortBed.getBaseName()} \
+            --logistic genotypic \
+            --covar ${cohortCov} \
+            --out ${cohortBed.getBaseName()}.genotypic
+        """
+}
+
+process fitHethomAssociationModel {
+    label 'plink2'
+
+    input:
+        tuple path(cohortBed), path(cohortBim), path(cohortFam), path(cohortCov)
+    output:
+        publishDir "${params.outputDir}/${params.associationInput}/reports", mode: 'copy'
+        path "${cohortBed.getBaseName()}.hethom.PHENO1.glm.logistic"
+    script:
+        """
+        plink2 \
+            --bfile ${cohortBed.getBaseName()} \
+            --logistic hethom \
+            --covar ${cohortCov} \
+            --out ${cohortBed.getBaseName()}.hethom
+        """
+}
+
+process fitDominantAssociationModel {
+    label 'plink2'
+
+    input:
+        tuple path(cohortBed), path(cohortBim), path(cohortFam), path(cohortCov)
+    output:
+        publishDir "${params.outputDir}/${params.associationInput}/reports", mode: 'copy'
+        path "${cohortBed.getBaseName()}.dominant.PHENO1.glm.logistic"
+    script:
+        """
+        plink2 \
+            --bfile ${cohortBed.getBaseName()} \
+            --logistic dominant \
+            --covar ${cohortCov} \
+            --out ${cohortBed.getBaseName()}.dominant
+        """
+}
+
+process fitRecessiveAssociationModel {
+    label 'plink2'
+
+    input:
+        tuple path(cohortBed), path(cohortBim), path(cohortFam), path(cohortCov)
+    output:
+        publishDir "${params.outputDir}/${params.associationInput}/reports", mode: 'copy'
+        path "${cohortBed.getBaseName()}.recessive.PHENO1.glm.logistic"
+    script:
+        """
+        plink2 \
+            --bfile ${cohortBed.getBaseName()} \
+            --logistic recessive \
+            --covar ${cohortCov} \
+            --out ${cohortBed.getBaseName()}.recessive
+        """
+}
+
+process fitHetonlyAssociationModel {
+    label 'plink2'
+
+    input:
+        tuple path(cohortBed), path(cohortBim), path(cohortFam), path(cohortCov)
+    output:
+        publishDir "${params.outputDir}/${params.associationInput}/reports", mode: 'copy'
+        path "${cohortBed.getBaseName()}.hetonly.PHENO1.glm.logistic"
+    script:
+        """
+        plink2 \
+            --bfile ${cohortBed.getBaseName()} \
+            --logistic hetonly \
+            --covar ${cohortCov} \
+            --out ${cohortBed.getBaseName()}.hetonly
+        """
 }
 
 process drawManhattanPlot {
@@ -92,14 +187,4 @@ process drawQqPlot {
         qq(assoc\$P)
         dev.off()
         """
-}
-
-def sendWorkflowExitEmail() {
-    if (userEmailAddressIsProvided()) {
-        sendMail(
-            to: "${params.email}",
-            subject: getBasicEmailSubject(),
-            body: getBasicEmailMessage(),
-            attach: "${params.outputDir}/plotArchives/association-${params.associationInput}.tar.gz")
-    }
 }

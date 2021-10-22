@@ -9,12 +9,12 @@ def checkSelectedSnv() {
     }
 }
 def checkAssociationInput() {
+    posibleInputs = ["input", "basicFiltered", "sampleFiltered", "snvFiltered", "phased", "ancestry"]
     if (stringIsNull(params.associationInput)) {
-        exit 1, 'params.associationInput not set -> please chose an input step to use in association test, e.g. input'
+        exit 1, "params.associationInput not set -> please set it to one of the following items: ${posibleInputs}"
     }
-    posibleInputs = ["input", "basicFiltered", "sampleFiltered", "snvFiltered", "phased"]
     if (!posibleInputs.contains(params.associationInput)) {
-        exit 1, 'params.associationInput not recognised -> please set it to one of the following items: ["input", "basicFiltered", "sampleFiltered", "snvFiltered", "phased"]'
+        exit 1, "params.associationInput value not recognised -> please set it to one of the following items: ${posibleInputs}"
     }
 }
 def checkIlluminaGenotypeReports() {
@@ -40,6 +40,12 @@ def checkClinicalPhenotypeFam() {
         exit 1, 'params.input.clinicalPhenotypeFam not set -> please provide a clinical phenotype fam file path'
     }
     checkFilePath(params.input.clinicalPhenotypeFam)
+}
+def checkCovariatesReport() {
+    if (stringIsNull(params.input.covariatesReport)) {
+        exit 1, 'params.input.covariatesReport not set -> please provide a covariates cov file path'
+    }
+    checkFilePath(params.input.covariatesReport)
 }
 def checkEmailAdressProvided() {
     if (!userEmailAddressIsProvided()) {
@@ -167,6 +173,34 @@ def getCohortData(inputDataTag) {
     return bed.combine(bim).combine(fam)
 }
 
+def getCovariatesReport(inputDataTag) {
+
+    return channel.fromPath(
+        params.outputDir + "${inputDataTag}/cohortData/" + params.cohortName + ".${inputDataTag}.cov")
+}
+
+process rebuildCovariatesReport {
+    label 'plink2'
+    label 'mediumMemory'
+
+    input:
+        val label
+        path covariatesReport
+        tuple path(cohortBed), path(cohortBim), path(cohortFam)
+    output:
+        publishDir "${params.outputDir}/${label}/cohortData", mode: 'copy'
+        path "${params.cohortName}.${label}.cov"
+    script:
+        """
+        plink2 \
+            --bfile ${cohortBed.getBaseName()} \
+            --covar ${covariatesReport} \
+            --threads $task.cpus \
+            --write-covar cols=fid \
+            --out ${params.cohortName}.${label}
+        """
+}
+
 def printWorkflowExitMessage() {
     if (workflow.success) {
         log.info "Workflow completed without errors".center(60)
@@ -193,4 +227,23 @@ process collectPlotsTogetherAndZip {
         cp -L *.p?? plots/
         tar -czf ${label}.tar.gz plots
         """
+}
+
+def sendWorkflowExitEmail() {
+    if (userEmailAddressIsProvided()) {
+        sendMail(
+            to: "${params.email}",
+            subject: getBasicEmailSubject(),
+            body: getBasicEmailMessage())
+   }
+}
+
+def sendWorkflowExitEmailWithPlots(analysisStep) {
+    if (userEmailAddressIsProvided()) {
+      sendMail(
+          to: "${params.email}",
+          subject: getBasicEmailSubject(),
+          body: getBasicEmailMessage(),
+      attach: "${params.outputDir}plotArchives/${analysisStep}.tar.gz")
+  }
 }

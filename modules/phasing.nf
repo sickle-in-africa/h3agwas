@@ -9,6 +9,7 @@ include {
     getBasicEmailSubject;
     getBasicEmailMessage;
     getCohortData;
+    getCovariatesReport;
 } from "${projectDir}/modules/base.nf"
 
 def checkInputParams() {
@@ -16,15 +17,29 @@ def checkInputParams() {
     checkOutputDir()
     checkEmailAdressProvided()
     checkInputCohortData('snvFiltered')
-    checkReferencePanelsDir()
-    checkGeneticMapsDir()
+    //checkReferencePanelsDir()
+    //checkGeneticMapsDir()
 }
 
 def getInputChannels() {
     return [
-        getCohortData('snvFiltered'),
+        getCohortData('ancestry'),
         getReferencePanels(),
-        getGeneticMaps()]
+	    getGeneticMapsArchive(),
+        getCovariatesReport('ancestry')]
+}
+
+process decompressGeneticMapsArchive {
+    input:
+        path geneticMapsArchive
+
+    output:
+        path "*.map"
+
+    script:
+        """
+        unzip ${geneticMapsArchive}
+        """
 }
 
 process selectBiallelicSnvsWithBcftools {
@@ -153,6 +168,7 @@ process phaseWithBeagle {
         """
         beagle \
             ref=${referencePanel} \
+            impute=true \
             map=${geneticMap} \
             gt=${alignedGenotypes} \
             chrom=${chromosome} \
@@ -177,6 +193,23 @@ process indexWithTabix {
         tabix -p vcf ${vcfFile}
         """
 }
+
+process indexReferencePanel {
+    label 'htslib'
+    label 'mediumMemory'
+
+    tag "chr${chromosome}"
+
+    input:
+	tuple val(chromosome), path(vcfFile)
+    output:
+	tuple val(chromosome), path("${vcfFile}"), path("${vcfFile}.tbi")
+    script:
+        """
+	tabix -p vcf ${vcfFile}
+        """
+}
+
 
 process concatenateWithBcftools {
     label 'bcftools'
@@ -218,23 +251,16 @@ process rebuildCohortDataWithPlink() {
         """
 }
 
-def sendWorkflowExitEmail() {
-    if (userEmailAddressIsProvided()) {
-        sendMail(
-            to: "${params.email}",
-            subject: getBasicEmailSubject(),
-            body: getBasicEmailMessage())
-   }
+def getReferencePanels() {
+    referencePanels = channel
+        .fromPath(params.phase.referencePanels)
+        .flatten()
+
+    return indexByChromosome(selectAutosomes(referencePanels))
 }
 
-
-def getReferencePanels() {
-    return channel
-        .of(1..22)
-        .map{ it -> [
-            it,
-            file(params.phase.referencePanelsDir + '*chr' + it + '.*.vcf.gz')[0],
-            file(params.phase.referencePanelsDir + '*chr' + it + '.*.vcf.gz.tbi')[0]]}
+def getGeneticMapsArchive() {
+    return channel.fromPath(params.phase.geneticMapsArchive)
 }
 
 def getGeneticMaps() {
@@ -243,5 +269,24 @@ def getGeneticMaps() {
         .map{ it -> [
             it,
             file(params.phase.geneticMapsDir + '*chr' + it + '.*.map')[0]]}
+}
+
+def selectAutosomes(inputPaths) {
+    return inputPaths
+        .filter {
+            !(it.getName() =~ /chrX/) && !(it.getName() =~ /chrY/)
+        }
+}
+
+def indexByChromosome(inputPaths) {
+    return inputPaths
+        .map {
+            it ->
+            [getChromosomeNumberFromString(it.getName()), it]
+        }
+}
+
+def getChromosomeNumberFromString(inputString) {
+    return (inputString =~ /chr(\d+)/)[0][1].toInteger()
 }
 

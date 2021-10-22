@@ -1,5 +1,6 @@
 include {
     getCohortData;
+    getCovariatesReport;
     checkCohortName;
     checkOutputDir;
     checkEmailAdressProvided;
@@ -17,7 +18,9 @@ def checkInputParams() {
 }
 
 def getInputChannels() {
-    return getCohortData('sampleFiltered')
+    return [
+        getCohortData('sampleFiltered'),
+        getCovariatesReport('sampleFiltered')]
 }
 
 process getMissingnessReport {
@@ -265,14 +268,4 @@ process removeLowQualitySnvs {
             --make-bed \
             --out ${params.cohortName}.snvFiltered
         """
-}
-
-def sendWorkflowExitEmail() {
-    if (userEmailAddressIsProvided()) {
-      sendMail(
-          to: "${params.email}",
-          subject: getBasicEmailSubject(),
-          body: getBasicEmailMessage(),
-	  attach: "${params.outputDir}plotArchives/snvFiltering.tar.gz")
-  }
 }

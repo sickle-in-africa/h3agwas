@@ -32,6 +32,8 @@ nextflow.enable.dsl=2
 include {
     printWorkflowExitMessage;
     collectPlotsTogetherAndZip;
+    sendWorkflowExitEmailWithPlots;
+    rebuildCovariatesReport;
 } from "${projectDir}/modules/base.nf"
 
 include {
@@ -50,7 +52,6 @@ include {
     selectSamplesFailingMHTest;
     concatenateSampleLists;
     removeLowQualitySamples;
-    sendWorkflowExitEmail;
 } from "${projectDir}/modules/sampleQualityControl.nf"
 
 
@@ -58,7 +59,9 @@ workflow {
 
     checkInputParams()
 
-    cohortData = getInputChannels()
+    (cohortData,
+     covariatesReport) \
+        = getInputChannels()
 
     cohortEigen \
         = getPopulationStratificationReports(
@@ -130,9 +133,14 @@ workflow {
             cohortData,
             lowQualitySamples)
 
+    filteredCovariatesReport \
+        = rebuildCovariatesReport(
+            'sampleFiltered',
+            covariatesReport,
+            sampleFilteredCohortData)
 }
 
 workflow.onComplete {
     printWorkflowExitMessage()
-    sendWorkflowExitEmail()
+    sendWorkflowExitEmailWithPlots("sampleFiltering")
 }
