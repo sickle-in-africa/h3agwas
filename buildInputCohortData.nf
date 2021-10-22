@@ -43,6 +43,7 @@ nextflow.enable.dsl = 2
 include {
     printWorkflowExitMessage;
     rebuildCovariatesReport;
+    sendWorkflowExitEmail;
 } from "${projectDir}/modules/base.nf"
 
 include {
@@ -57,7 +58,6 @@ include {
     intersectFamFilesBySampleId;
     buildCohortData;
     rebuildCohortDataWithPhenotypes;
-    sendWorkflowExitEmail;
 } from "${projectDir}/modules/buildInput.nf"
 
 workflow {
