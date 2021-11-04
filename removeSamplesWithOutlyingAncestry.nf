@@ -17,7 +17,9 @@ include {
     checkInputParams;
     getInputChannels;
     convertCohortDataToEigensoftFormat;
-    selectPrincipalComponents;
+    mapToPrincipalComponents;
+    getNumberOfAvailableComponents;
+    selectNumbersSmallerThanLimit;
     testPrincipalComponentToPhenotypeAssociations;
     concatenateAcrossPrincipalComponents;
     calculateVarianceAddedByNewPrincipalComponent;
@@ -36,7 +38,6 @@ workflow {
     checkInputParams()
 
     (cohortData,
-     principalComponentIds,
      covariatesReport) \
         = getInputChannels()
 
@@ -45,11 +46,19 @@ workflow {
             cohortData)
 
     principalComponents \
-        = selectPrincipalComponents(eigensoftCohortData)
+        = mapToPrincipalComponents(eigensoftCohortData)
+
+    numberOfAvailableComponents \
+        = getNumberOfAvailableComponents(principalComponents)
+
+    availableComponentIds \
+        = selectNumbersSmallerThanLimit(
+            principalComponentIds,
+            numberOfAvailableComponents)
 
     pvalueAndVarianceTuples \
         = testPrincipalComponentToPhenotypeAssociations(
-            principalComponentIds
+            availableComponentIds
                 .combine(principalComponents
                     .combine(cohortData)))
 

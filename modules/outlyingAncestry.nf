@@ -37,7 +37,7 @@ process convertCohortDataToEigensoftFormat {
         """
 }
 
-process selectPrincipalComponents {
+process mapToPrincipalComponents {
     label 'eigensoft'
     label 'bigMemory'
 
@@ -63,6 +63,26 @@ process selectPrincipalComponents {
             --expression 's/^[ \t]*//' \
             ${cohortGeno.getBaseName()}.evec
         """
+}
+
+process getNumberOfAvailableComponents {
+
+    input:
+        tuple path(cohortEvec), path(cohortEval), path(cohortLog)
+    output:
+        env numberOfAvailableComponents
+    script:
+        """
+        numberOfAvailableComponents=`awk 'END{ print NR-1 }' ${cohortEvec}`
+        """
+}
+
+def selectNumbersSmallerThanLimit(numbers, limitNumber) {
+
+    return numbers
+        .combine(limitNumber)
+        .filter { it[0] < it[1].toInteger() }
+        .map { it -> it[0] }
 }
 
 process testPrincipalComponentToPhenotypeAssociations {
