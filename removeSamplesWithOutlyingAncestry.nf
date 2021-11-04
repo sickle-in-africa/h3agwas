@@ -38,6 +38,7 @@ workflow {
     checkInputParams()
 
     (cohortData,
+     principalComponentIds,
      covariatesReport) \
         = getInputChannels()
 
