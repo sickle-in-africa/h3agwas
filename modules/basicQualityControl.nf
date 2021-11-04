@@ -77,7 +77,7 @@ process removeDuplicatedVariants {
 }
 
 
-process alignGenotypesToReference() {
+process alignGenotypesToReference {
     label 'mediumMemory'
     label 'plink2'
 
@@ -105,7 +105,7 @@ process alignGenotypesToReference() {
         """
 }
 
-process selectBiallelicSnvs() {
+process selectBiallelicSnvs {
     label 'mediumMemory'
     label 'bcftools'
 
@@ -129,7 +129,7 @@ process selectBiallelicSnvs() {
         """
 }
 
-process rebuildCohortData() {
+process rebuildCohortData {
     label 'mediumMemory'
     label 'plink2'
 
@@ -152,19 +152,33 @@ process rebuildCohortData() {
         """
 }
 
-process removeReallyLowQualitySamplesAndSnvs {
+process selectCommonSnvs {
     label 'plink'
     label 'smallMemory'
 
-    tag "alignedCohortData"
+    input:
+        tuple path(cohortBed), path(cohortBim), path(cohortFam)
+    output:
+        path "common-snvs.{bed,bim,fam}"
+    script:
+        """
+        plink \
+            --keep-allele-order \
+            --bfile ${cohortBed.getBaseName()} \
+            --maf ${params.baseQC.minAlleleFrequency} \
+            --make-bed \
+            --out common-snvs
+        """
+}
+
+process removeSamplesWithLowCallRates {
+    label 'plink'
+    label 'smallMemory'
 
     input:
         tuple path(cohortBed), path(cohortBim), path(cohortFam)
-
     output:
-        publishDir "${params.outputDir}/basicFiltered/cohortData", mode: 'copy'
-        path "${params.cohortName}.basicFiltered.{bed,bim,fam}"
-
+        path "high-sample-call-rate.{bed,bim,fam}"
     script:
         """
         plink \
@@ -172,24 +186,26 @@ process removeReallyLowQualitySamplesAndSnvs {
             --bfile ${cohortBed.getBaseName()}  \
             --mind ${params.baseQC.maxMissingnessPerSample} \
             --make-bed \
-            --out temp1
+            --out high-sample-call-rate
+        """
+}
+
+process removeSnvsWithLowCallRates {
+    label 'plink'
+    label 'smallMemory'
+
+    input:
+        tuple path(cohortBed), path(cohortBim), path(cohortFam)
+    output:
+        publishDir "${params.outputDir}/basicFiltered/cohortData", mode: 'copy'
+        path "${params.cohortName}.basicFiltered.{bed,bim,fam}"
+    script:
+        """
         plink \
             --keep-allele-order \
-            --bfile temp1 \
+            --bfile ${cohortBed.getBaseName()}  \
             --geno ${params.baseQC.maxMissingnessPerSnv} \
             --make-bed \
-            --out temp2
-        plink \
-            --keep-allele-order \
-            --bfile temp2 \
-            --maf ${params.baseQC.minAlleleFrequency} \
-            --make-bed \
-            --out temp3
-        plink \
-            --keep-allele-order \
-            --bfile temp3  \
-            --hwe ${params.baseQC.minHardyWeinbergEquilibriumPvalue} \
-            --make-bed \
-            --out ${params.cohortName}.basicFiltered     
+            --out ${params.cohortName}.basicFiltered
         """
 }

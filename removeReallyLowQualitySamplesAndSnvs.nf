@@ -21,9 +21,13 @@
  *  and this new aligned and filtered cohort genotypes vcf file. 
  *
  *  Finally, we perform a set of hard filtering transformations to 
- *  the rebuilt cohort data, which includes removing snvs with high 
- *  missingness rates, or those seriously far from hardy weinberg
- *  equilibrium and so on. 
+ *  the rebuilt cohort data, which includes:
+ *     + keeping only common snvs (minor allele frequency above some
+ *        user-specified threshold)
+ *     + removing samples with low call rates (high genotype 
+ *        missingness)
+ *     + removing snvs with low call rates (high genotype
+ *        missingness)
  *
  *******************************************************************/
 
@@ -43,7 +47,9 @@ include {
     alignGenotypesToReference;
     selectBiallelicSnvs;
     rebuildCohortData;
-    removeReallyLowQualitySamplesAndSnvs;
+    selectCommonSnvs;
+    removeSamplesWithLowCallRates;
+    removeSnvsWithLowCallRates;
 } from "${projectDir}/modules/basicQualityControl.nf"
 
 
@@ -53,7 +59,8 @@ workflow {
 
     (cohortData,
      referenceSequence,
-     covariatesReport) = getInputChannels()
+     covariatesReport) \
+        = getInputChannels()
 
     duplicatedVariantIds \
         = selectDuplicatedVariants(
@@ -78,9 +85,17 @@ workflow {
             biallelicGenotypeSet,
             filteredCohortData)
 
-    basicFilteredCohortData \
-        = removeReallyLowQualitySamplesAndSnvs(
+    cohortDataWithCommonSnvs \
+        = selectCommonSnvs(
             alignedCohortData)
+
+    cohortDataWithHighSampleCallRates \
+        = removeSamplesWithLowCallRates(
+            cohortDataWithCommonSnvs)
+
+    basicFilteredCohortData \
+        = removeSnvsWithLowCallRates(
+            cohortDataWithHighSampleCallRates)
 
     filteredCovariatesReport \
         = rebuildCovariatesReport(
