@@ -238,7 +238,7 @@ process rebuildCohortDataWithPlink() {
         tuple path(unphasedBed), path(unphasedBim), path(unphasedFam)
     output:
         publishDir path: "${params.outputDir}/phased/cohortData", mode: 'copy'
-        path "${params.cohortName}.phased.{bed,bim,fam,log}"
+        path "${params.cohortName}.phased.{bed,bim,fam}"
     script:
         """
         plink2 \
