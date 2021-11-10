@@ -171,7 +171,7 @@ process addSignificantPrincipleComponentsToCovariates {
         #!/usr/bin/env Rscript --vanilla
         library(tidyverse)
 
-        read.table('cameroon-scd.snvFiltered.evec', skip=1) %>% as_tibble -> evec
+        read.table("${cohortEvec}", skip=1) %>% as_tibble -> evec
 
         evec[,1:(${numberOfSignificantPrincipalComponents}+1)] -> evec_filtered
 
