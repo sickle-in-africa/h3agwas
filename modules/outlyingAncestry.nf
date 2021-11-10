@@ -298,7 +298,7 @@ process extractOutliers {
         path "${cohortEvec.getBaseName()}.outliers"
     script:
         """
-        awk '/REMOVED/ {print \$3}' ${cohortLog} | sed 's/:/ /g' > ${cohortEvec.getBaseName()}.outliers
+        awk '/REMOVED/ {print \$3 \$3}' ${cohortLog} | sed 's/:/ /g' > ${cohortEvec.getBaseName()}.outliers
         """
 }
 
