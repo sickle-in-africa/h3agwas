@@ -222,7 +222,7 @@ process removeOutlyingSamples {
             indivname: ${cohortInd}
             evecoutname: ${cohortGeno.getBaseName()}.outliers.evec
             evaloutname: ${cohortGeno.getBaseName()}.outliers.eval
-            numoutlieriter: 0
+            numoutlieriter: 5
             numoutlierevec: ${numberOfSignificantPrincipalComponents}
             numoutevec: ${params.ancestry.numberOfPrincipalComponentsToAnalyze}
             outliersigmathresh: 6
