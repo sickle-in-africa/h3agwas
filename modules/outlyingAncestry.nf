@@ -295,10 +295,10 @@ process extractOutliers {
     input:
         tuple path(cohortEvec), path(cohortEval), path(cohortLog)
     output:
-        path "${cohortEvec.getBaseName()}.outliers"
+        path "${cohortEvec.getBaseName()}"
     script:
         """
-        awk '/REMOVED/ {print \$3 \$3}' ${cohortLog} | sed 's/:/ /g' > ${cohortEvec.getBaseName()}.outliers
+        awk '/REMOVED/ {print \$3, \$3}' ${cohortLog} | sed 's/:/ /g' > ${cohortEvec.getBaseName()}
         """
 }
 
