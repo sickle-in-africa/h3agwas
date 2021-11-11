@@ -66,7 +66,6 @@ process mergeSampleReports {
     script:
         """
         awk '(NR == 1) || (FNR > 1)' ${sampleReports} \
-            | awk 'NR<2{print \$0;next}{print \$0| "sort | uniq -u"}' \
             > ${params.cohortName}-sample-report.csv
         """
 }
@@ -80,7 +79,6 @@ process mergeLocusReports {
     script:
         """
         awk '(NR == 1) || (FNR > 1)' ${locusReports} \
-            | awk 'NR<2{print \$0;next}{print \$0| "sort | uniq -u"}' \
             > ${params.cohortName}-locus-report.csv
         """
 }
@@ -137,7 +135,9 @@ process convertLocusReportToMap {
                     '{print \$2,\$1,"0",\$3}' \
                     | awk '\$1!="0"' \
                         | sed '1d' \
-                            > ${outputFile}
+                            | sort \
+                                | uniq -u \
+            > ${outputFile}
         """
 }
 
@@ -179,7 +179,9 @@ process convertSampleReportToFam {
                     'FS="," \
                     {print \$1,\$1,"0","0","-9","-9"}' \
                     | sed '1d' \
-                        > ${outputFile}
+                        | sort \
+                            | uniq -u
+            > ${outputFile}
         """
 }
 
