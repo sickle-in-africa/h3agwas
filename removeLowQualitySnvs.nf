@@ -46,7 +46,6 @@ include {
     selectSnvsOutOfHardyWeinbergEquilibrium;
     concatenateSnvLists;
     removeLowQualitySnvs;
-    sendWorkflowExitEmail;
 } from "${projectDir}/modules/snvQualityControl.nf"
 
 

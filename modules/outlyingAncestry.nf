@@ -171,7 +171,7 @@ process addSignificantPrincipleComponentsToCovariates {
         #!/usr/bin/env Rscript --vanilla
         library(tidyverse)
 
-        read.table('cameroon-scd.snvFiltered.evec', skip=1) %>% as_tibble -> evec
+        read.table("${cohortEvec}", skip=1) %>% as_tibble -> evec
 
         evec[,1:(${numberOfSignificantPrincipalComponents}+1)] -> evec_filtered
 
@@ -222,7 +222,7 @@ process removeOutlyingSamples {
             indivname: ${cohortInd}
             evecoutname: ${cohortGeno.getBaseName()}.outliers.evec
             evaloutname: ${cohortGeno.getBaseName()}.outliers.eval
-            numoutlieriter: 0
+            numoutlieriter: 5
             numoutlierevec: ${numberOfSignificantPrincipalComponents}
             numoutevec: ${params.ancestry.numberOfPrincipalComponentsToAnalyze}
             outliersigmathresh: 6
@@ -295,10 +295,10 @@ process extractOutliers {
     input:
         tuple path(cohortEvec), path(cohortEval), path(cohortLog)
     output:
-        path "${cohortEvec.getBaseName()}.outliers"
+        path "${cohortEvec.getBaseName()}"
     script:
         """
-        awk '/REMOVED/ {print \$3}' ${cohortLog} | sed 's/:/ /g' > ${cohortEvec.getBaseName()}.outliers
+        awk '/REMOVED/ {print \$3, \$3}' ${cohortLog} | sed 's/:/ /g' > ${cohortEvec.getBaseName()}
         """
 }
 
