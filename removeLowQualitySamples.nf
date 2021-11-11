@@ -43,6 +43,7 @@ include {
     getDiscordantSampleSexInfoReport;
     getSampleBasedMissingnessReport;
     getIdentityByDescentReport;
+    getRelatednessReport;
     getSampleHeterozygosityReport;
     drawPopulationStratificationPlot;
     drawSampleMissingnessHistogram;
@@ -89,6 +90,10 @@ workflow {
 
     cohortGenome \
         = getIdentityByDescentReport(
+            cohortData)
+
+    cohortKin0 \
+        = getRelatednessReport(
             cohortData)
 
     highRelatednessSamples \

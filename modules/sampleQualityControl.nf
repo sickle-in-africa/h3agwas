@@ -175,6 +175,28 @@ process getIdentityByDescentReport {
         """
 }
 
+process getRelatednessReport {
+    label 'king'
+    label 'mediumMemory'
+
+    tag "cohortData"
+
+    input:
+        tuple path(cohortBed), path(cohortBim), path(cohortFam)
+
+    output:
+        publishDir "${params.outputDir}/sampleFiltered/reports", mode: 'copy'
+        path "${cohortBed.getBaseName()}.kin0"
+
+    script:
+        """
+        king \
+            -b ${cohortBed.getBaseName()}.bed \
+            --related \
+            --prefix ${cohortBed.getBaseName()}
+        """
+}
+
 process selectSamplesWithHighRelatedness {
     label 'python3'
     label 'mediumMemory'

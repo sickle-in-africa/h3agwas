@@ -18,16 +18,16 @@ def checkAssociationInput() {
     }
 }
 def checkIlluminaGenotypeReports() {
-    if (stringIsNull(params.input.genotypeReports)) {
-        exit 1, 'params.input.genotypeReports not set -> please provide a genotype report path glob pattern'
-    }
-    // also need to check if any file exists... //
+
+    checkParamHoldingPathOrArrayOfPaths(
+        params.input.genotypeReports,
+        'params.input.genotypeReports not set -> please provide a genotype report path glob pattern')
 }
 def checkIlluminaSampleReport() {
-    if (stringIsNull(params.input.sampleReport)) {
-        exit 1, 'params.input.sampleReport not set -> please provide a sample report file path'
-    }
-    checkFilePath(params.input.sampleReport)
+
+    checkParamHoldingPathOrArrayOfPaths(
+        params.input.sampleReport,
+        'params.input.sampleReport not set -> please provide a sample report file path')
 }
 def checkIlluminaLocusReport() {
     if (stringIsNull(params.input.locusReport)) {
@@ -46,6 +46,19 @@ def checkCovariatesReport() {
         exit 1, 'params.input.covariatesReport not set -> please provide a covariates cov file path'
     }
     checkFilePath(params.input.covariatesReport)
+}
+def checkParamHoldingPathOrArrayOfPaths(param, errorMessage) {
+
+    if(param instanceof String) {
+        if (stringIsNull(param)) {
+            exit 1, errorMessage
+        }
+        checkFilePath(param)
+    } else if(param instanceof Collection) {
+        param.each {
+            checkFilePath(it)
+        }
+    }
 }
 def checkEmailAdressProvided() {
     if (!userEmailAddressIsProvided()) {
@@ -93,9 +106,11 @@ def checkInputCohortData(inputDataTag) {
     }
 }
 def checkFilePath(inputPath) {
-    checkFileOrDirExists(file(inputPath))
-    checkFileNonempty(file(inputPath))
-    checkFileIsFile(file(inputPath))  
+    if (!stringIsGlobPattern(inputPath)) {
+        checkFileOrDirExists(file(inputPath))
+        checkFileNonempty(file(inputPath))
+        checkFileIsFile(file(inputPath))
+    }
 }
 def checkDirPath(inputPath) {
     checkDirPathStringFormat(inputPath)
@@ -133,7 +148,9 @@ def userEmailAddressIsProvided() {
 def stringIsNull(string) {
 	return ( string =~ /NULL/ )
 }
-
+def stringIsGlobPattern(string) {
+    return( string =~ /\*/ || string =~ /\?/ || string =~ /\[/ || string =~ /\{/ )
+}
 def getBasicEmailSubject() {
     return "[nextflow|h3agwaws] run ${workflow.runName} has finished"
 }

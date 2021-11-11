@@ -71,7 +71,7 @@ workflow {
      covariatesReport) \
         = getInputChannels()
 
-    genotypeReportChunks \
+/*    genotypeReportChunks \
         = splitTextFiles(
             genotypeReports)
 
@@ -115,7 +115,7 @@ workflow {
         = rebuildCovariatesReport(
             'input',
             covariatesReport,
-            phenotypedCohortData)
+            phenotypedCohortData)*/
 
 }
 
