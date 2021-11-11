@@ -49,6 +49,8 @@ include {
 include {
     checkInputParams;
     getInputChannels;
+    mergeSampleReports;
+    mergeLocusReports;
     splitTextFiles;
     convertGenotypeReportToLongFormat;
     concatenateLgenFiles;
@@ -65,13 +67,21 @@ workflow {
     checkInputParams()
 
     (genotypeReports,
-     sampleReport,
-     locusReport,
+     sampleReports,
+     locusReports,
      phenotypeFam, 
      covariatesReport) \
         = getInputChannels()
 
-/*    genotypeReportChunks \
+    cohortSampleReport \
+        = mergeSampleReports(
+            sampleReports.collect())
+
+    cohortLocusReport \
+        = mergeLocusReports(
+            locusReports.collect())
+
+    genotypeReportChunks \
         = splitTextFiles(
             genotypeReports)
 
@@ -85,11 +95,11 @@ workflow {
 
     cohortMap \
         = convertLocusReportToMap(
-            locusReport)
+            cohortLocusReport)
 
     filteredSampleReport \
         = removeSamplesWithFailedGenotypes(
-            sampleReport)
+            cohortSampleReport)
 
     illuminaFam \
         = convertSampleReportToFam(
@@ -115,7 +125,7 @@ workflow {
         = rebuildCovariatesReport(
             'input',
             covariatesReport,
-            phenotypedCohortData)*/
+            phenotypedCohortData)
 
 }
 

@@ -57,6 +57,34 @@ def getCovariatesReport() {
         .fromPath(params.input.covariatesReport)
 }
 
+process mergeSampleReports {
+
+    input:
+        path sampleReports
+    output:
+        path "${params.cohortName}-sample-report.csv"
+    script:
+        """
+        awk '(NR == 1) || (FNR > 1)' ${sampleReports} \
+            | awk 'NR<2{print \$0;next}{print \$0| "sort | uniq -u"}' \
+            > ${params.cohortName}-sample-report.csv
+        """
+}
+
+process mergeLocusReports {
+
+    input:
+        path locusReports
+    output:
+        path "${params.cohortName}-locus-report.csv"
+    script:
+        """
+        awk '(NR == 1) || (FNR > 1)' ${locusReports} \
+            | awk 'NR<2{print \$0;next}{print \$0| "sort | uniq -u"}' \
+            > ${params.cohortName}-locus-report.csv
+        """
+}
+
 def splitTextFiles(inputFiles) {
     return inputFiles
         .splitText(

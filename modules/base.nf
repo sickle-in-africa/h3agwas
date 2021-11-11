@@ -18,47 +18,29 @@ def checkAssociationInput() {
     }
 }
 def checkIlluminaGenotypeReports() {
-
     checkParamHoldingPathOrArrayOfPaths(
         params.input.genotypeReports,
         'params.input.genotypeReports not set -> please provide a genotype report path glob pattern')
 }
 def checkIlluminaSampleReport() {
-
     checkParamHoldingPathOrArrayOfPaths(
         params.input.sampleReport,
         'params.input.sampleReport not set -> please provide a sample report file path')
 }
 def checkIlluminaLocusReport() {
-    if (stringIsNull(params.input.locusReport)) {
-        exit 1, 'params.input.locusReport not set -> please provide a locus report file path'
-    }
-    checkFilePath(params.input.locusReport)
+    checkParamHoldingPathOrArrayOfPaths(
+        params.input.locusReport,
+        'params.input.locusReport not set -> please provide a locus report file path')
 }
 def checkClinicalPhenotypeFam() {
-    if (stringIsNull(params.input.clinicalPhenotypeFam)) {
-        exit 1, 'params.input.clinicalPhenotypeFam not set -> please provide a clinical phenotype fam file path'
-    }
-    checkFilePath(params.input.clinicalPhenotypeFam)
+    checkParamHoldingPathOrArrayOfPaths(
+        params.input.clinicalPhenotypeFam,
+        'params.input.clinicalPhenotypeFam not set -> please provide a clinical phenotype fam file path')
 }
 def checkCovariatesReport() {
-    if (stringIsNull(params.input.covariatesReport)) {
-        exit 1, 'params.input.covariatesReport not set -> please provide a covariates cov file path'
-    }
-    checkFilePath(params.input.covariatesReport)
-}
-def checkParamHoldingPathOrArrayOfPaths(param, errorMessage) {
-
-    if(param instanceof String) {
-        if (stringIsNull(param)) {
-            exit 1, errorMessage
-        }
-        checkFilePath(param)
-    } else if(param instanceof Collection) {
-        param.each {
-            checkFilePath(it)
-        }
-    }
+    checkParamHoldingPathOrArrayOfPaths(
+        params.input.covariatesReport,
+        'params.input.covariatesReport not set -> please provide a covariates cov file path')
 }
 def checkEmailAdressProvided() {
     if (!userEmailAddressIsProvided()) {
@@ -84,10 +66,9 @@ def checkGeneticMapsDir() {
     checkDirPath(params.phase.geneticMapsDir)
 }
 def checkReferenceSequence() {
-    if (stringIsNull(params.baseQC.referenceSequence)) {
-        exit 1, 'params.baseQC.referenceSequence not set -> please provide a reference sequence fasta file path'
-    }
-    checkFilePath(params.baseQC.referenceSequence)
+    checkParamHoldingPathOrArrayOfPaths(
+        params.baseQC.referenceSequence,
+        'params.baseQC.referenceSequence not set -> please provide a reference sequence fasta file path')
 }
 def checkInputCohortData(inputDataTag) {
 
@@ -103,6 +84,18 @@ def checkInputCohortData(inputDataTag) {
     }
     if (!(famFile.exists())) {
         exit 1, "could not find input fam file at ${famFile} please check your output directory and try again"
+    }
+}
+def checkParamHoldingPathOrArrayOfPaths(param, errorMessage) {
+    if(param instanceof String) {
+        if (stringIsNull(param)) {
+            exit 1, errorMessage
+        }
+        checkFilePath(param)
+    } else if(param instanceof Collection) {
+        param.each {
+            checkFilePath(it)
+        }
     }
 }
 def checkFilePath(inputPath) {
