@@ -180,7 +180,7 @@ process convertSampleReportToFam {
                     {print \$1,\$1,"0","0","-9","-9"}' \
                     | sed '1d' \
                         | sort \
-                            | uniq -u
+                            | uniq -u \
             > ${outputFile}
         """
 }
