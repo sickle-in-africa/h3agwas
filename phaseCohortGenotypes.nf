@@ -64,14 +64,10 @@ workflow {
     checkInputParams()
 
     (inputCohortData,
-     referencePanels,
+     filteredReferencePanels,
      geneticMapsArchive,
      covariatesReport) \
         = getInputChannels()
-
-    referencePanelsWithIndexes \
-        = indexReferencePanel(
-            referencePanels)
 
     geneticMaps \
         = decompressGeneticMapsArchive(geneticMapsArchive)
@@ -79,10 +75,6 @@ workflow {
 
     autosomalGeneticMaps \
         = indexByChromosome(selectAutosomes(geneticMaps))
-
-    filteredReferencePanels \
-        = selectBiallelicSnvsWithBcftools(
-        referencePanelsWithIndexes)
 
     genotypeSet \
         = selectAutosomalGenotypeSet(

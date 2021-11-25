@@ -23,46 +23,10 @@ def checkInputParams() {
 
 def getInputChannels() {
     return [
-        getCohortData('ancestry'),
+        getCohortData('strandFlipped'),
         getReferencePanels(),
 	    getGeneticMapsArchive(),
-        getCovariatesReport('ancestry')]
-}
-
-process decompressGeneticMapsArchive {
-    input:
-        path geneticMapsArchive
-
-    output:
-        path "*.map"
-
-    script:
-        """
-        unzip ${geneticMapsArchive}
-        """
-}
-
-process selectBiallelicSnvsWithBcftools {
-    label 'bcftools'
-    label 'mediumMemory'
-
-    tag "referencePanel_chr${chromosome}"
-
-    input:
-    tuple val(chromosome), path(referencePanel), path(referencePanelIndex)
-    output:
-    tuple val(chromosome), path("chr${chromosome}.refpanel.biallelic.vcf.gz")
-    script:
-    """
-        bcftools \
-            view \
-            -M2 \
-            -v snps \
-            --threads $task.cpus \
-            -Oz \
-            -o chr${chromosome}.refpanel.biallelic.vcf.gz \
-            ${referencePanel}
-        """
+        getCovariatesReport('strandFlipped')]
 }
 
 process selectGenotypeSetWithPlink {
@@ -81,28 +45,6 @@ process selectGenotypeSetWithPlink {
         """
         plink2 \
             --bfile ${cohortBed.getBaseName()} \
-            --export vcf-4.2 bgz id-paste='fid' \
-            --out ${cohortBed.getBaseName()}
-        """
-}
-
-process selectAutosomalGenotypeSet {
-    label 'plink2'
-    label 'smallMemory'
-
-    tag "cohortData"
-
-    input:
-        tuple path(cohortBed), path(cohortBim), path(cohortFam)
-
-    output:
-        path "${cohortBed.getBaseName()}.vcf.gz"
-
-    script:
-        """
-        plink2 \
-            --bfile ${cohortBed.getBaseName()} \
-            --chr 1-22 \
             --export vcf-4.2 bgz id-paste='fid' \
             --out ${cohortBed.getBaseName()}
         """
@@ -194,23 +136,6 @@ process indexWithTabix {
         """
 }
 
-process indexReferencePanel {
-    label 'htslib'
-    label 'mediumMemory'
-
-    tag "chr${chromosome}"
-
-    input:
-	tuple val(chromosome), path(vcfFile)
-    output:
-	tuple val(chromosome), path("${vcfFile}"), path("${vcfFile}.tbi")
-    script:
-        """
-	tabix -p vcf ${vcfFile}
-        """
-}
-
-
 process concatenateWithBcftools {
     label 'bcftools'
     label 'mediumMemory'
@@ -253,13 +178,13 @@ process rebuildCohortDataWithPlink() {
 
 def getReferencePanels() {
     referencePanels = channel
-        .fromPath(params.phase.referencePanels)
+        .fromPath("${params.outputDir}/public-databases/reference-panels/chr*.refpanel.biallelic.vcf.gz")
         .flatten()
 
     return indexByChromosome(selectAutosomes(referencePanels))
 }
 
-def getGeneticMapsArchive() {
+def getGeneticMaps() {
     return channel.fromPath(params.phase.geneticMapsArchive)
 }
 
