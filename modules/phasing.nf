@@ -16,7 +16,7 @@ def checkInputParams() {
     checkCohortName()
     checkOutputDir()
     checkEmailAdressProvided()
-    checkInputCohortData('snvFiltered')
+    checkInputCohortData('strandFlipped')
     //checkReferencePanelsDir()
     //checkGeneticMapsDir()
 }
@@ -184,7 +184,7 @@ def getReferencePanels() {
     return indexByChromosome(selectAutosomes(referencePanels))
 }
 
-def getGeneticMaps() {
+def getGeneticMapsArchive() {
     return channel.fromPath(params.phase.geneticMapsArchive)
 }
 

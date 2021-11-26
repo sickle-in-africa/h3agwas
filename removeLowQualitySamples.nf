@@ -92,9 +92,9 @@ workflow {
         = getIdentityByDescentReport(
             cohortData)
 
-    cohortKin0 \
+/*    cohortKin0 \
         = getRelatednessReport(
-            cohortData)
+            cohortData)*/
 
     highRelatednessSamples \
         = selectSamplesWithHighRelatedness(

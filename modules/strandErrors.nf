@@ -16,7 +16,7 @@ def checkInputParams() {
     checkCohortName()
     checkOutputDir()
     checkEmailAdressProvided()
-    checkInputCohortData('snvFiltered')
+    checkInputCohortData('ancestry')
     //checkReferencePanelsDir()
     //checkGeneticMapsDir()
 }
@@ -151,10 +151,10 @@ process concatenateFiles {
     input:
         path files
     output:
-        path "opposite-strand_snvs.txt"
+        path "opposite-strand-snvs.txt"
     script:
         """
-        cat *.log > opposite-strand_snvs.txt
+        cat *.txt > opposite-strand-snvs.txt
         """
 }
 
@@ -165,14 +165,17 @@ process rebuildCohortData {
     tag "haplotypeSet, inputFam"
 
     input:
-        path cohortFam
+        path genotypes
         tuple path(cohortBed), path(cohortBim), path(cohortFam)
     output:
-        path "${params.cohortName}.strandFlipped.{bed,bim,fam}"
+        tuple \
+            path("${params.cohortName}.aligned.bed"),
+            path("${params.cohortName}.aligned.bim"),
+            path("${params.cohortName}.aligned.fam")
     script:
         """
         plink2 \
-            --vcf ${cohortFam} \
+            --vcf ${genotypes} \
             --fam ${cohortFam} \
             --threads $task.cpus \
             --make-bed \
@@ -183,16 +186,19 @@ process rebuildCohortData {
 
 process flipGenotypesOnOppositeStrand {
     label 'mediumMemory'
-    label 'plink2'
+    label 'plink'
 
     input:
         tuple path(cohortBed), path(cohortBim), path(cohortFam), path(snvList)
     output:
         publishDir path: "${params.outputDir}/strandFlipped/cohortData", mode: 'copy'
-        path("${params.cohortName}.strandFlipped.{bed,bim,fam}")
+        tuple \
+            path("${params.cohortName}.strandFlipped.bed"),
+            path("${params.cohortName}.strandFlipped.bim"),
+            path("${params.cohortName}.strandFlipped.fam")
     script:
         """
-        plink2 \
+        plink \
             --bfile ${cohortBed.getBaseName()} \
             --flip ${snvList} \
             --threads $task.cpus \

@@ -42,18 +42,19 @@ include {
 } from "${projectDir}/modules/base.nf"
 
 include {
+    decompressGeneticMapsArchive;
+    selectAutosomalGenotypeSet;
+} from "${projectDir}/modules/strandErrors.nf"
+
+include {
     checkInputParams;
     getInputChannels;
-    decompressGeneticMapsArchive;
     selectAutosomes;
     indexByChromosome;
-    selectBiallelicSnvsWithBcftools;
-    selectAutosomalGenotypeSet;
     recodeMaleXHaploidAsDiploid;
     alignWithConformGt;
     phaseWithBeagle;
     indexWithTabix;
-    indexReferencePanel;
     concatenateWithBcftools;
     rebuildCohortDataWithPlink;
 } from "${projectDir}/modules/phasing.nf"
